@@ -34,11 +34,11 @@
         <div class="col-md-5">
             <p><b>YAML Input:</b></p>
             <p>
-                <textarea class="main-box" id="textarea-input"></textarea>
+                <textarea class="main-box" id="box-input"></textarea>
             </p>
         </div>
         <div class="col-md-7">
-            <p><b>Output:</b></p>
+            <p><b>JSON Output:</b></p>
             <p>
             <pre><code id="box-output" class="main-box" class="language-json">...</code></pre>
             </p>
@@ -112,17 +112,18 @@
         }
     }
 
-    function transform() {
+    function onBoxInputChanged() {
+        const input = $('#box-input').val()
         try {
-            $("#box-output").text(doTransform())
+            $("#box-output").text(transform(input))
             hljs.highlightAll();
         } catch (e) {
             $("#box-output").text(e.toString())
         }
     }
 
-    function doTransform() {
-        const doc = jsyaml.load($("#textarea-input").val());
+    function transform(input) {
+        const doc = jsyaml.load(input);
         for (const path of PATHS_GENERAL) {
             jsonpatch.applyOperation(doc, {op: "remove", path})
         }
@@ -147,7 +148,7 @@
     }
 
     $(document).ready(function () {
-        $("#textarea-input").bind('input propertychange', debounce(transform, 200, false));
+        $("#box-input").bind('input propertychange', debounce(onBoxInputChanged, 200, false));
     });
 </script>
 </body>
