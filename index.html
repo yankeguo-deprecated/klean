@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Klean by Guo Y.K.</title>
+    <link rel="stylesheet" href="//unpkg.com/bootswatch@5.2.0/dist/flatly/bootstrap.min.css"/>
+    <link rel="stylesheet" href="//unpkg.com/@highlightjs/cdn-assets@11.6.0/styles/default.min.css">
+    <style>
+        pre {
+            white-space: pre-wrap; /* Since CSS 2.1 */
+            white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
+            white-space: -pre-wrap; /* Opera 4-6 */
+            white-space: -o-pre-wrap; /* Opera 7 */
+            word-wrap: break-word; /* Internet Explorer 5.5+ */
+        }
+
+        .main-box {
+            width: 100%;
+            height: auto;
+            min-height: 600px;
+        }
+
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <h5 class="d-inline-block">Klean</h5>
+            <span>(Remove useless fields from an existed Kubernetes resource)</span>
+        </div>
+    </div>
+    <div class="row mt-3">
+        <div class="col-md-5">
+            <p><b>YAML Input:</b></p>
+            <p>
+                <textarea class="main-box" id="textarea-input"></textarea>
+            </p>
+        </div>
+        <div class="col-md-7">
+            <p><b>Output:</b></p>
+            <p>
+            <pre><code id="box-output" class="main-box" class="language-json">...</code></pre>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script src="//unpkg.com/jquery@3.6.1/dist/jquery.slim.min.js"></script>
+<script src="//unpkg.com/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<script src="//unpkg.com/fast-json-patch@3.1.1/dist/fast-json-patch.min.js"></script>
+<script src="//unpkg.com/@highlightjs/cdn-assets@11.6.0/highlight.min.js"></script>
+<script src="//unpkg.com/@highlightjs/cdn-assets@11.6.0/languages/yaml.min.js"></script>
+<script src="//unpkg.com/@highlightjs/cdn-assets@11.6.0/languages/json.min.js"></script>
+<script>
+    const patchSet = [
+        [
+            {"op": "remove", "path": "/status"}
+        ],
+        [
+            {"op": "remove", "path": "/metadata/creationTimestamp"}
+        ],
+        [
+            {
+                "op": "remove",
+                "path": "/metadata/generation"
+            }
+        ],
+        [
+            {"op": "remove", "path": "/metadata/selfLink"}
+        ],
+        [
+            {"op": "remove", "path": "/metadata/uid"}
+        ],
+        [
+            {
+                "op": "remove",
+                "path": "/metadata/managedFields"
+            }
+        ],
+        [
+            {"op": "remove", "path": "/metadata/finalizers"}
+        ],
+        [
+            {
+                "op": "remove",
+                "path": "/metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration"
+            }
+        ],
+        [
+            {"op": "remove", "path": "/metadata/annotations/deployment.kubernetes.io~1revision"}
+        ],
+        [
+            {
+                "op": "remove",
+                "path": "/metadata/annotations/field.cattle.io~1ingressState"
+            }
+        ],
+        [
+            {"op": "remove", "path": "/metadata/annotations/field.cattle.io~1publicEndpoints"}
+        ],
+        [
+            {
+                "op": "remove",
+                "path": "/spec/template/metadata/creationTimestamp"
+            }
+        ],
+        [
+            {"op": "remove", "path": "/spec/replicas"}
+        ],
+        [
+            {"op": "remove", "path": "/metadata/resourceVersion"}
+        ]
+    ];
+
+
+    function debounce(func, wait, immediate) {
+        let timer;
+
+        return function () {
+            let context = this;
+            let args = arguments;
+
+            if (timer) clearTimeout(timer);
+            if (immediate) {
+                var callNow = !timer;
+                timer = setTimeout(() => {
+                    timer = null;
+                }, wait)
+                if (callNow) func.apply(context, args)
+            } else {
+                timer = setTimeout(function () {
+                    func.apply(context, args)
+                }, wait);
+            }
+        }
+    }
+
+    function transform() {
+        try {
+            $("#box-output").text(doTransform())
+            hljs.highlightAll();
+        } catch (e) {
+            $("#box-output").text(e.toString())
+        }
+    }
+
+    function doTransform() {
+        let doc = jsyaml.load($("#textarea-input").val());
+        for (const patch of patchSet) {
+            jsonpatch.applyPatch(doc, patch)
+        }
+        return JSON.stringify(doc, null, "  ")
+    }
+
+    $(document).ready(function () {
+        $("#textarea-input").bind('input propertychange', debounce(transform, 200, false));
+    });
+</script>
+</body>
+</html>
