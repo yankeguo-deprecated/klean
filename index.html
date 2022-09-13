@@ -53,64 +53,40 @@
 <script src="//unpkg.com/@highlightjs/cdn-assets@11.6.0/languages/yaml.min.js"></script>
 <script src="//unpkg.com/@highlightjs/cdn-assets@11.6.0/languages/json.min.js"></script>
 <script>
-    const patchSet = [
-        [
-            {"op": "remove", "path": "/status"}
-        ],
-        [
-            {"op": "remove", "path": "/metadata/creationTimestamp"}
-        ],
-        [
-            {
-                "op": "remove",
-                "path": "/metadata/generation"
-            }
-        ],
-        [
-            {"op": "remove", "path": "/metadata/selfLink"}
-        ],
-        [
-            {"op": "remove", "path": "/metadata/uid"}
-        ],
-        [
-            {
-                "op": "remove",
-                "path": "/metadata/managedFields"
-            }
-        ],
-        [
-            {"op": "remove", "path": "/metadata/finalizers"}
-        ],
-        [
-            {
-                "op": "remove",
-                "path": "/metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration"
-            }
-        ],
-        [
-            {"op": "remove", "path": "/metadata/annotations/deployment.kubernetes.io~1revision"}
-        ],
-        [
-            {
-                "op": "remove",
-                "path": "/metadata/annotations/field.cattle.io~1ingressState"
-            }
-        ],
-        [
-            {"op": "remove", "path": "/metadata/annotations/field.cattle.io~1publicEndpoints"}
-        ],
-        [
-            {
-                "op": "remove",
-                "path": "/spec/template/metadata/creationTimestamp"
-            }
-        ],
-        [
-            {"op": "remove", "path": "/spec/replicas"}
-        ],
-        [
-            {"op": "remove", "path": "/metadata/resourceVersion"}
-        ]
+    const PATHS_GENERAL = [
+        "/metadata/annotations/deployment.kubernetes.io~1revision",
+        "/metadata/annotations/analysis.crane.io~1replicas-recommendation",
+        "/metadata/annotations/analysis.crane.io~1resource-recommendation",
+        "/metadata/annotations/field.cattle.io~1creatorId",
+        "/metadata/annotations/field.cattle.io~1ingressState",
+        "/metadata/annotations/field.cattle.io~1publicEndpoints",
+        "/metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration",
+        "/metadata/creationTimestamp",
+        "/metadata/finalizers",
+        "/metadata/generation",
+        "/metadata/labels/cattle.io~1creator",
+        "/metadata/managedFields",
+        "/metadata/resourceVersion",
+        "/metadata/selfLink",
+        "/metadata/uid",
+        "/spec/replicas",
+        "/spec/template/metadata/annotations/cattle.io~1timestamp",
+        "/spec/template/metadata/annotations/net.guoyk.deployer~1timestamp",
+        "/spec/template/metadata/annotations/workload.cattle.io~1state",
+        "/spec/template/metadata/creationTimestamp",
+        "/status",
+    ];
+
+    const PATHS_FUCK_RANCHER = [
+        "/metadata/labels/workload.user.cattle.io~1workloadselector",
+        "/spec/selector/matchLabels/workload.user.cattle.io~1workloadselector",
+        "/spec/template/metadata/labels/workload.user.cattle.io~1workloadselector"
+    ];
+
+    const PATHS_FUCK_RANCHER_AGAIN = [
+        "/metadata/labels/app",
+        "/spec/selector/matchLabels/app",
+        "/spec/template/metadata/labels/app"
     ];
 
 
@@ -146,10 +122,27 @@
     }
 
     function doTransform() {
-        let doc = jsyaml.load($("#textarea-input").val());
-        for (const patch of patchSet) {
-            jsonpatch.applyPatch(doc, patch)
+        const doc = jsyaml.load($("#textarea-input").val());
+        for (const path of PATHS_GENERAL) {
+            jsonpatch.applyOperation(doc, {op: "remove", path})
         }
+
+        // FUCK RANCHER
+        if (jsonpatch.getValueByPointer(
+            doc,
+            "/spec/selector/matchLabels/workload.user.cattle.io~1workloadselector"
+        )) {
+            const app = jsonpatch.getValueByPointer(doc, "/metadata/name")
+            if (app) {
+                for (const path of PATHS_FUCK_RANCHER) {
+                    jsonpatch.applyOperation(doc, {op: "remove", path})
+                }
+                for (const path of PATHS_FUCK_RANCHER_AGAIN) {
+                    jsonpatch.applyOperation(doc, {op: "replace", path, value: app})
+                }
+            }
+        }
+
         return JSON.stringify(doc, null, "  ")
     }
 
