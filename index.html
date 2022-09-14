@@ -1,222 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Klean by Guo Y.K.</title>
-    <link rel="stylesheet" href="//unpkg.com/bootswatch@5.2.0/dist/flatly/bootstrap.min.css"/>
-    <link rel="stylesheet" href="//unpkg.com/@highlightjs/cdn-assets@11.6.0/styles/default.min.css">
+    <link rel="stylesheet" href="//unpkg.com/bootswatch@5.2.0/dist/flatly/bootstrap.min.css" />
     <style>
-        pre {
-            white-space: pre-wrap; /* Since CSS 2.1 */
-            white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
-            white-space: -pre-wrap; /* Opera 4-6 */
-            white-space: -o-pre-wrap; /* Opera 7 */
-            word-wrap: break-word; /* Internet Explorer 5.5+ */
-        }
-
         .main-box {
             width: 100%;
             height: auto;
             min-height: 600px;
         }
-
     </style>
 </head>
+
 <body>
-<div class="container-fluid">
-    <div class="row mt-3">
-        <div class="col-md-12">
-            <h5 class="d-inline-block">Klean</h5>
-            <span>(Remove useless fields from an existed Kubernetes resource)</span>
+    <div class="container-fluid">
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <h5 class="d-inline-block">Klean</h5>
+                <span>(Remove useless fields from an existed Kubernetes resource)</span>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-5">
+                <p><b>YAML Input:</b></p>
+                <div id="box-input" class="main-box"></div>
+            </div>
+            <div class="col-md-7">
+                <p><b>JSON Output:</b></p>
+                <div id="box-output" class="main-box"></div>
+            </div>
         </div>
     </div>
-    <div class="row mt-3">
-        <div class="col-md-5">
-            <p><b>YAML Input:</b></p>
-            <div id="box-input" class="main-box"></div>
-        </div>
-        <div class="col-md-7">
-            <p><b>JSON Output:</b></p>
-            <div id="box-output" class="main-box"></div>
-        </div>
-    </div>
-</div>
 
-<script src="//unpkg.com/jquery@3.6.1/dist/jquery.slim.min.js"></script>
-<script src="//unpkg.com/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
-<script src="//unpkg.com/fast-json-patch@3.1.1/dist/fast-json-patch.min.js"></script>
-<script src="//unpkg.com/ace-builds@1.10.1/src-min-noconflict/ace.js"></script>
-<script src="//unpkg.com/ace-builds@1.10.1/src-min-noconflict/mode-yaml.js"></script>
-<script src="//unpkg.com/ace-builds@1.10.1/src-min-noconflict/mode-json.js"></script>
+    <script src="//unpkg.com/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script src="//unpkg.com/fast-json-patch@3.1.1/dist/fast-json-patch.min.js"></script>
+    <script src="//unpkg.com/ace-builds@1.10.1/src-min-noconflict/ace.js"></script>
+    <script src="//unpkg.com/ace-builds@1.10.1/src-min-noconflict/mode-yaml.js"></script>
+    <script src="//unpkg.com/ace-builds@1.10.1/src-min-noconflict/mode-json.js"></script>
 
-<script>
+    <script>
 
-    let editorInput = null
-    let editorOutput = null
-
-    const PATHS_GENERAL = [
-        "/metadata/annotations/analysis.crane.io~1replicas-recommendation",
-        "/metadata/annotations/analysis.crane.io~1resource-recommendation",
-        "/metadata/annotations/deployment.kubernetes.io~1revision",
-        "/metadata/annotations/field.cattle.io~1creatorId",
-        "/metadata/annotations/field.cattle.io~1ingressState",
-        "/metadata/annotations/field.cattle.io~1publicEndpoints",
-        "/metadata/annotations/field.cattle.io~1targetWorkloadIds",
-        "/metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration",
-        "/metadata/annotations/workload.cattle.io~1targetWorkloadIdNoop",
-        "/metadata/annotations/workload.cattle.io~1workloadPortBased",
-        "/metadata/creationTimestamp",
-        "/metadata/finalizers",
-        "/metadata/generation",
-        "/metadata/labels/cattle.io~1creator",
-        "/metadata/managedFields",
-        "/metadata/ownerReferences",
-        "/metadata/resourceVersion",
-        "/metadata/selfLink",
-        "/metadata/uid",
-        "/spec/replicas",
-        "/spec/clusterIP",
-        "/spec/clusterIPs",
-        "/spec/template/metadata/annotations/cattle.io~1timestamp",
-        "/spec/template/metadata/annotations/net.guoyk.deployer~1timestamp",
-        "/spec/template/metadata/annotations/workload.cattle.io~1state",
-        "/spec/template/metadata/creationTimestamp",
-        "/status",
-    ]
-
-    function debounce(func, wait, immediate) {
-        let timer
-
-        return function () {
-            let context = this
-            let args = arguments
-
-            if (timer) clearTimeout(timer)
-            if (immediate) {
-                var callNow = !timer
-                timer = setTimeout(() => {
-                    timer = null
-                }, wait)
-                if (callNow) func.apply(context, args)
+        function ready(fn) {
+            if (document.readyState !== 'loading') {
+                fn()
             } else {
-                timer = setTimeout(function () {
-                    func.apply(context, args)
-                }, wait)
+                document.addEventListener('DOMContentLoaded', fn)
             }
         }
-    }
 
-    function jsonPatchRemove(doc, paths) {
-        for (const path of paths) {
+        function debounce(func, wait, immediate) {
+            let timer
+
+            return function () {
+                let context = this
+                let args = arguments
+
+                if (timer) clearTimeout(timer)
+                if (immediate) {
+                    var callNow = !timer
+                    timer = setTimeout(() => {
+                        timer = null
+                    }, wait)
+                    if (callNow) func.apply(context, args)
+                } else {
+                    timer = setTimeout(function () {
+                        func.apply(context, args)
+                    }, wait)
+                }
+            }
+        }
+
+        function jsonPatchRemove(doc, paths) {
+            for (const path of paths) {
+                try {
+                    jsonpatch.applyOperation(doc, { op: "remove", path })
+                } catch (_) {
+                }
+            }
+        }
+
+        function jsonPatchReplace(doc, paths, value) {
+            for (const path of paths) {
+                try {
+                    jsonpatch.applyOperation(doc, { op: "replace", path, value })
+                } catch (_) {
+                }
+            }
+        }
+
+        function jsonPatchGet(doc, path) {
             try {
-                jsonpatch.applyOperation(doc, {op: "remove", path})
+                return jsonpatch.getValueByPointer(doc, path)
             } catch (_) {
+                return null
             }
         }
-    }
 
-    function jsonPatchReplace(doc, paths, value) {
-        for (const path of paths) {
-            try {
-                jsonpatch.applyOperation(doc, {op: "replace", path, value})
-            } catch (_) {
-            }
-        }
-    }
+        function cleanResource(input) {
+            const doc = jsyaml.load(input)
 
-    function jsonPatchGet(doc, path) {
-        try {
-            return jsonpatch.getValueByPointer(doc, path)
-        } catch (_) {
-            return null
-        }
-    }
-
-    function onBoxInputChanged() {
-        const input = editorInput.getValue()
-        sessionStorage.setItem("input", input)
-        try {
-            editorOutput.setValue(transform(input))
-        } catch (e) {
-            editorOutput.setValue(e.toString())
-        }
-    }
-
-    function transform(input) {
-        const doc = jsyaml.load(input)
-
-        // CLEAN GENERAL
-        jsonPatchRemove(doc, PATHS_GENERAL)
-
-        // CLEAN PVC
-        const volumeName = jsonPatchGet(doc, "/spec/volumeName")
-        if (volumeName &&
-            volumeName.match(/^pvc-[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}$/)) {
+            // CLEAN GENERAL
             jsonPatchRemove(doc, [
-                "/metadata/annotations",
-                "/spec/volumeName",
-                "/spec/volumeMode",
+                "/metadata/annotations/analysis.crane.io~1replicas-recommendation",
+                "/metadata/annotations/analysis.crane.io~1resource-recommendation",
+                "/metadata/annotations/deployment.kubernetes.io~1revision",
+                "/metadata/annotations/field.cattle.io~1creatorId",
+                "/metadata/annotations/field.cattle.io~1ingressState",
+                "/metadata/annotations/field.cattle.io~1publicEndpoints",
+                "/metadata/annotations/field.cattle.io~1targetWorkloadIds",
+                "/metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration",
+                "/metadata/annotations/workload.cattle.io~1targetWorkloadIdNoop",
+                "/metadata/annotations/workload.cattle.io~1workloadPortBased",
+                "/metadata/creationTimestamp",
+                "/metadata/finalizers",
+                "/metadata/generation",
+                "/metadata/labels/cattle.io~1creator",
+                "/metadata/managedFields",
+                "/metadata/ownerReferences",
+                "/metadata/resourceVersion",
+                "/metadata/selfLink",
+                "/metadata/uid",
+                "/spec/replicas",
+                "/spec/clusterIP",
+                "/spec/clusterIPs",
+                "/spec/template/metadata/annotations/cattle.io~1timestamp",
+                "/spec/template/metadata/annotations/net.guoyk.deployer~1timestamp",
+                "/spec/template/metadata/annotations/workload.cattle.io~1state",
+                "/spec/template/metadata/creationTimestamp",
+                "/status",
             ])
-        }
 
-        // FUCK RANCHER WORKLOAD
-        if (jsonPatchGet(
-            doc,
-            "/spec/selector/matchLabels/workload.user.cattle.io~1workloadselector"
-        )) {
-            const app = jsonPatchGet(doc, "/metadata/name")
-            if (app) {
+            // CLEAN PVC
+            const volumeName = jsonPatchGet(doc, "/spec/volumeName")
+            if (volumeName &&
+                volumeName.match(/^pvc-[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}$/)) {
                 jsonPatchRemove(doc, [
-                    "/metadata/labels/workload.user.cattle.io~1workloadselector",
-                    "/spec/selector/matchLabels/workload.user.cattle.io~1workloadselector",
-                    "/spec/template/metadata/labels/workload.user.cattle.io~1workloadselector"
+                    "/metadata/annotations",
+                    "/spec/volumeName",
+                    "/spec/volumeMode",
                 ])
-                jsonPatchReplace(doc, [
-                    "/metadata/labels/app",
-                    "/spec/selector/matchLabels/app",
-                    "/spec/template/metadata/labels/app"
-                ], app)
             }
-        }
 
-        // FUCK RANCHER SERVICE
-        if (jsonPatchGet(
-            doc,
-            "/spec/selector/workload.user.cattle.io~1workloadselector"
-        )) {
-            let app = jsonPatchGet(doc, "/metadata/name")
-            if (app) {
-                app = app.replace(/-nodeport$/, "").replace(/-loadbalancer$/, "")
-                jsonPatchRemove(doc, [
-                    "/spec/selector/workload.user.cattle.io~1workloadselector"
-                ])
-                jsonPatchReplace(doc, [
-                    "/spec/selector/app"
-                ], app)
+            // FUCK RANCHER WORKLOAD
+            if (jsonPatchGet(
+                doc,
+                "/spec/selector/matchLabels/workload.user.cattle.io~1workloadselector"
+            )) {
+                const app = jsonPatchGet(doc, "/metadata/name")
+                if (app) {
+                    jsonPatchRemove(doc, [
+                        "/metadata/labels/workload.user.cattle.io~1workloadselector",
+                        "/spec/selector/matchLabels/workload.user.cattle.io~1workloadselector",
+                        "/spec/template/metadata/labels/workload.user.cattle.io~1workloadselector"
+                    ])
+                    jsonPatchReplace(doc, [
+                        "/metadata/labels/app",
+                        "/spec/selector/matchLabels/app",
+                        "/spec/template/metadata/labels/app"
+                    ], app)
+                }
             }
+
+            // FUCK RANCHER SERVICE
+            if (jsonPatchGet(
+                doc,
+                "/spec/selector/workload.user.cattle.io~1workloadselector"
+            )) {
+                let app = jsonPatchGet(doc, "/metadata/name")
+                if (app) {
+                    app = app.replace(/-nodeport$/, "").replace(/-loadbalancer$/, "")
+                    jsonPatchRemove(doc, [
+                        "/spec/selector/workload.user.cattle.io~1workloadselector"
+                    ])
+                    jsonPatchReplace(doc, [
+                        "/spec/selector/app"
+                    ], app)
+                }
+            }
+
+            return JSON.stringify(doc, null, "  ")
         }
 
-        return JSON.stringify(doc, null, "  ")
-    }
+        (function () {
 
-    $(document).ready(function () {
-        editorInput = ace.edit('box-input')
-        editorInput.session.setMode('ace/mode/yaml')
+            let editorInput = null
+            let editorOutput = null
 
-        editorOutput = ace.edit('box-output')
-        editorOutput.session.setMode('ace/mode/json')
-        editorOutput.setReadOnly(true)
+            function onBoxInputChanged() {
+                const input = editorInput.getValue()
+                sessionStorage.setItem("input", input)
+                try {
+                    editorOutput.setValue(cleanResource(input))
+                } catch (e) {
+                    editorOutput.setValue(e.toString())
+                }
+            }
 
-        const debounced = debounce(onBoxInputChanged, 200, false)
+            ready(function () {
+                editorInput = ace.edit('box-input')
+                editorInput.session.setMode('ace/mode/yaml')
 
-        editorInput.session.on('change', debounced)
+                editorOutput = ace.edit('box-output')
+                editorOutput.session.setMode('ace/mode/json')
+                editorOutput.setReadOnly(true)
 
-        const cached = sessionStorage.getItem("input");
-        if (cached) {
-            editorInput.setValue(cached)
-            onBoxInputChanged()
-        }
-    })
-</script>
+                const debounced = debounce(onBoxInputChanged, 200, false)
+
+                editorInput.session.on('change', debounced)
+
+                const cached = sessionStorage.getItem("input")
+                if (cached) {
+                    editorInput.setValue(cached)
+                    onBoxInputChanged()
+                }
+            })
+
+        })()
+    </script>
 </body>
+
 </html>
